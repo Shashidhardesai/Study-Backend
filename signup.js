@@ -1,13 +1,9 @@
 const mongoose=require('mongoose')
 
 const signupdata=new mongoose.Schema({
-  firstname: {
+  username: {
     type: String,
     required: true
-  },
-  lastname:{
-    type:String,
-    required:true
   },
   email:{
     type:String,
