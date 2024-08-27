@@ -6,6 +6,7 @@ const path = require('path');
 const signup = require("./signup"); 
 const image=require("./image")
 const courseimg=require("./courseimg")
+const enrollcourse=require("./enrollcourse")
 
 const app = express();
 app.use(express.json());
@@ -110,6 +111,33 @@ app.get("/courseimgs", async (req, res) => {
     res.status(400).json({ message: 'Error in fetching course image', error: err.message });
   }
 });
+app.get("/courseimgs/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const courseImage = await courseimg.findById(id);
+
+    if (!courseImage) {
+      return res.status(404).json({ message: 'Course image not found' });
+    }
+
+    res.status(200).json(courseImage);
+  } catch (err) {
+    console.error('Error in fetching course image:', err); 
+    res.status(400).json({ message: 'Error in fetching course image', error: err.message });
+  }
+});
+
+
+app.post("/enrollcourse", async (req, res) => {
+  try {
+    const user = await enrollcourse.create(req.body);
+    console.log(user);
+  } catch (err) {
+    console.error('Error in enrollcourse:', err);
+    res.status(500).json({ message: 'Server error enrollcourse', error: err.message });
+  }
+});
+
 
 
 app.listen(5000, () => {
