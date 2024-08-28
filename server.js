@@ -7,6 +7,8 @@ const signup = require("./signup");
 const image=require("./image")
 const courseimg=require("./courseimg")
 const enrollcourse=require("./enrollcourse")
+const courselinks=require("./courselinks");
+const { json } = require('body-parser');
 
 const app = express();
 app.use(express.json());
@@ -135,6 +137,32 @@ app.post("/enrollcourse", async (req, res) => {
   } catch (err) {
     console.error('Error in enrollcourse:', err);
     res.status(500).json({ message: 'Server error enrollcourse', error: err.message });
+  }
+});
+
+app.post("/courselinks",async(req,res)=>{
+ try {
+  const links=await courselinks.create(req.body);
+  console.log(links);
+ } catch (error) {
+  console.error("error in fetching links:",error);
+  res.status(500).json({message:"server error in fetching links",error:err.message})
+ }
+})
+
+app.get('/courselinks/:cid', async (req, res) => {
+  try {
+    const cid = req.params.cid;  
+    const link = await courselinks.findOne({ courseId: cid });
+
+    if (!link) {
+      return res.status(404).json({ message: "Course not found with the provided cid." });
+    }
+
+    res.status(200).json(link);  
+  } catch (error) {
+    console.error("Error in fetching link:", error);
+    res.status(500).json({ message: "Server error in fetching the link", error: error.message });
   }
 });
 
