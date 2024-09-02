@@ -22,50 +22,68 @@ mongoose.connect("mongodb://127.0.0.1:27017/StudyEnhance")
     console.log("Database is not connected", err);
   });
 
-
-  app.post("/studysignups", async (req, res) => {
-    const { username, email, password } = req.body;
   
+
+  app.post('/studysignups', async (req, res) => {
+    const { username, email, password} = req.body;
+
+    if (!username) {
+        return res.status(400).json({ message: 'Username is required.' });
+    }
+
+    if (!email) {
+        return res.status(400).json({ message: 'Email is required.' });
+    }
+
+    if (!password) {
+        return res.status(400).json({ message: 'Password is required.' });
+    }
+
     if (password.length < 6) {
-      return res.status(400).json({ message: 'Password should have a minimum of 6 characters.' });
+        return res.status(400).json({ message: 'Password should have a minimum of 6 characters.' });
     }
     if (!/[A-Z]/.test(password)) {
-      return res.status(400).json({ message: 'Password should have at least one uppercase letter.' });
+        return res.status(400).json({ message: 'Password should have at least one uppercase letter.' });
     }
     if (!/[a-z]/.test(password)) {
-      return res.status(400).json({ message: 'Password should have at least one lowercase letter.' });
+        return res.status(400).json({ message: 'Password should have at least one lowercase letter.' });
     }
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      return res.status(400).json({ message: 'Password should have at least one special character.' });
+        return res.status(400).json({ message: 'Password should have at least one special character.' });
     }
-    try {
-      const sp = await signup.create({ username, email, password });
-      res.status(201).json(sp);
-    } catch (err) {
-      console.error('Error creating signup:', err); 
-      res.status(400).json({ message: 'Error creating signup', error: err.message });
-    }
-  });
-  
 
-  app.post("/studylogin", async (req, res) => {
-    console.log('Login endpoint hit');
-    const { email, password } = req.body;
-  
     try {
-      const user = await signup.findOne({ email, password });
-      console.log(user)
-  
-      if (user) {
-        res.status(200).json({ message: 'Login successful' });
-      } else {
-        res.status(401).json({ message: 'Invalid email or password' });
-      }
+        const signupData = {
+            username,
+            email,
+            password
+        };
+
+
+        const sp = await signup.create(signupData);
+        res.status(201).json(sp);
     } catch (err) {
-      console.error('Error during login:', err);
-      res.status(500).json({ message: 'Server error during login', error: err.message });
+        console.error('Error creating signup:', err);
+        res.status(400).json({ message: 'Error creating signup', error: err.message });
     }
-  });
+});
+
+
+
+app.get("/studysignups/:id",async(req,res)=>{
+  const {id}=req.params;
+    try {
+      const document = await signup.findById(id);
+      if (!document) {
+          return res.status(404).json({ message: 'Document not found.' });
+      }
+      res.status(200).json(document);
+  } catch (err) {
+      console.error('Error retrieving document:', err);
+      res.status(500).json({ message: 'Error retrieving document', error: err.message });
+  }
+  
+})
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -78,22 +96,124 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-app.post("/profileimage", upload.single('image'), async (req, res) => {
+app.post('/profileimage/:id', upload.single('image'), async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.params.id;
     const imagePath = req.file ? req.file.path : null;
 
-    if (!userId || !imagePath) {
-      return res.status(400).json({ message: 'UserId and imagePath are required' });
+    if (!imagePath) {
+      return res.status(400).json({ message: 'No image file provided' });
     }
 
-    const newImage = await image.create({ userId, imagePath });
-    res.status(201).json(newImage);
-  } catch (err) {
-    console.error('Error creating image:', err.message);
-    res.status(500).json({ message: 'Error creating image', error: err.message });
+    const user = await signup.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.imagePath = imagePath;
+    await user.save();
+
+    res.status(200).json({ message: 'Image uploaded successfully', imagePath });
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    res.status(500).json({ message: 'Error uploading image', error });
   }
 });
+
+app.use('/uploads', express.static('uploads'));
+
+
+app.get('/profileimage/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await signup.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.imagePath) {
+      return res.status(404).json({ message: 'No image found for this user' });
+    }
+
+    res.sendFile(path.resolve(user.imagePath)); 
+  } catch (error) {
+    console.error('Error retrieving image:', error);
+    res.status(500).json({ message: 'Error retrieving image', error });
+  }
+});
+
+
+  app.put('/profileimage/:id', upload.single('image'), async (req, res) => {
+    const { id } = req.params;
+    const { username, email, password } = req.body;
+  
+    if (password && password.length < 6) {
+      return res.status(400).json({ message: 'Password should have a minimum of 6 characters.' });
+    }
+    if (password && !/[A-Z]/.test(password)) {
+      return res.status(400).json({ message: 'Password should have at least one uppercase letter.' });
+    }
+    if (password && !/[a-z]/.test(password)) {
+      return res.status(400).json({ message: 'Password should have at least one lowercase letter.' });
+    }
+    if (password && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return res.status(400).json({ message: 'Password should have at least one special character.' });
+    }
+  
+    try {
+      const existingSignup = await signup.findById(id);
+      if (!existingSignup) {
+        return res.status(404).json({ message: 'Signup data not found' });
+      }
+  
+      if (username) existingSignup.username = username;
+      if (email) existingSignup.email = email;
+      if (password) existingSignup.password = password;
+  
+      if (req.file) {
+        if (existingSignup.imagePath) {
+          fs.unlink(existingSignup.imagePath, (err) => {
+            if (err) {
+              console.error('Error deleting old image:', err);
+            }
+          });
+        }
+        existingSignup.imagePath = req.file.path;
+      }
+      const updatedSignup = await existingSignup.save();
+      res.status(200).json(updatedSignup);
+    } catch (err) {
+      console.error('Error updating signup data:', err);
+      res.status(400).json({ message: 'Error updating signup data', error: err.message });
+    }
+  });
+  
+
+  app.post("/studylogins", async (req, res) => {
+    console.log('Login endpoint hit');
+    const { email, password } = req.body;
+  
+    try {
+      const user = await signup.findOne({ email, password });
+      console.log(user);
+  
+      if (user) {
+        res.status(200).json({ message: 'Login successful', userId: user._id });
+      } else {
+        res.status(401).json({ message: 'Invalid email or password' });
+      }
+    } catch (err) {
+      console.error('Error during login:', err);
+      res.status(500).json({ message: 'Server error during login', error: err.message });
+    }
+});
+
+
+
+
+
 
 app.post("/courseimg", async (req, res) => {
   try {
